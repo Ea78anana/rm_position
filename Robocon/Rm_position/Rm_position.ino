@@ -14,6 +14,13 @@ void rm_position(std_msgs::Int16 i, std_msgs:: Int16 a, std_msgs:: void* arg)
   catapult_prev = catapult_current;
 }
 
+void rm_reset_position(std_msgs::Bool i, std_msgs:: void* arg)
+{
+  if i = 1{
+     carbase_motors.reset_gearbox_pos(3);
+  }
+}
+
 void send_can_frame(int id){
   CAN.beginPacket(id);
   CAN.write(carbase_motors.can_msg, 8);
@@ -49,7 +56,7 @@ class Controller : public ros2::Node {
     Controller() : Node("functions_arduino_node") {
       this->createSubscriber<std_msgs::Int16>("Left_cmd", (ros2::CallbackFunc)rm_position, nullptr);
       this->createSubscriber<std_msgs::Int16>("Right_cmd", (ros2::CallbackFunc)rm_position, nullptr);
-      this->createSubscriber<std_msgs::Int16>("Reset_cmd", (ros2::CallbackFunc)rm_reset_position, nullptr);
+      this->createSubscriber<std_msgs::Bool>("Reset_cmd", (ros2::CallbackFunc)rm_reset_position, nullptr);
     }
 };
 
