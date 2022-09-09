@@ -35,12 +35,22 @@ class controller(Node):
         self.subscription = self.create_subscription(Joy, "joy", self.joyCallback, 10)
 
     def joyCallback(self, msg):
-        if msg.buttons[CROSS] != self.cross.data:
-            self.cross.data = not self.cross.data
-            self.get_logger().info(f'cross: {self.cross.data}')
-            self.cross_publisher.publish(self.cross)
+        if msg.axes[7] == 1:
+            self.Dup.data = not self.Dup.data
+            self.get_logger().info(f'Reset: {self.Reset.data}')
+            self.Dup_publisher.publish(self.Dup)
         
-        if msg.buttons[TRIANGLE] != self.triangle.data:
-            self.triangle.data = not self.triangle.data
-            self.get_logger().info(f'triangle: {self.triangle.data}')
-            self.triangle_publisher.publish(self.triangle)
+        if msg.axes[7] == -1:
+            self.Ddow.data = not self.Ddow.data
+            self.get_logger().info(f'Right: {self.Right.data}')
+            self.Ddow_publisher.publish(self.Ddow)
+
+        if msg.axes[6] == 1:
+            self.Dup.data = not self.Dup.data
+            self.get_logger().info(f'Reset: {self.Reset.data}')
+            self.Dup_publisher.publish(self.Dup)
+        
+        if msg.axes[6] == -1:
+            self.Ddow.data = not self.Ddow.data
+            self.get_logger().info(f'Left: {self.Left.data}')
+            self.Ddow_publisher.publish(self.Ddow)
