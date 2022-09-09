@@ -5,13 +5,9 @@
 
 using namespace ros2;
 
-void rm_position(std_msgs::Int16 i,std_msgs:: void* arg)
+void rm_position(std_msgs::Int16 i, std_msgs:: Int16 a, std_msgs:: void* arg)
 {
  catapult_current = i;
- /** if (PS4.Circle()){
-    carbase_motors.reset_gearbox_pos(3);
-  }
- **/
   if (catapult_current && !catapult_prev){
     carbase_motors.set_target_pos(3, carbase_motors.target_pos[3] - 157313);
   }
@@ -51,7 +47,9 @@ class Controller : public ros2::Node {
 
   public:
     Controller() : Node("functions_arduino_node") {
-      this->createSubscriber<std_msgs::Int16>("trianglecross_cmd", (ros2::CallbackFunc)rm_position, nullptr);
+      this->createSubscriber<std_msgs::Int16>("Left_cmd", (ros2::CallbackFunc)rm_position, nullptr);
+      this->createSubscriber<std_msgs::Int16>("Right_cmd", (ros2::CallbackFunc)rm_position, nullptr);
+      this->createSubscriber<std_msgs::Int16>("Reset_cmd", (ros2::CallbackFunc)rm_reset_position, nullptr);
     }
 };
 
