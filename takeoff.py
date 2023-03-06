@@ -9,9 +9,11 @@ import rospy
 import olympe
 import os
 import time
-from olympe.messages.ardrone3.Piloting import TakeOff, Landing, moveBy, moveTo,Circle
+import olympe.enums.move as mode  
+from olympe.messages.ardrone3.Piloting import TakeOff, Landing, moveBy, moveTo, Circle
 from olympe.messages.move import extended_move_by
-from olympe.messages.ardrone3.PilotingState import FlyingStateChanged, SpeedChanged
+from olympe.messages.ardrone3.PilotingState import FlyingStateChanged, SpeedChanged, moveToChanged
+from olympe.enums.ardrone3.PilotingState import MoveToChanged_Status as status
 
 class TakeOff_Class:
 
@@ -23,12 +25,13 @@ class TakeOff_Class:
     def test_takeoff(self):
         drone = olympe.Drone(self.DRONE_IP)
         drone.connect()
-        assert drone(TakeOff() >> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
-        assert drone(extended_move_by(10, 10, 0, 30, 1, 1, 1)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
-        assert drone(moveBy(-10, 0, 0, 0)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
-        assert drone(moveBy(0, 0, -10, 0)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
+        drone(TakeOff() >> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
+        drone(moveTo(40.4155755, -79.9494166, 6.0, mode.orientation_mode.to_target, 0.0)>> moveToChanged(status=status.DONE, _timeout=10)).wait().success()
+        #assert drone(extended_move_by(10, 0, 0, 0, 1, 1, 1)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
+        #assert drone(moveBy(-10, 0, 0, 0)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
+        #assert drone(moveBy(0, 0, -10, 0)>> FlyingStateChanged(state="hovering", _timeout=5)).wait().success()
         print("current state:",drone.get_state(SpeedChanged))
-        assert drone(Landing()).wait().success()
+        drone(Landing()).wait().success()
         drone.disconnect()
 
     def position_callback(msg):
