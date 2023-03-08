@@ -37,7 +37,7 @@ class TakeOff_Class:
 
     def __init__(self):
         self.DRONE_IP = os.environ.get(SPHINX_IP)
-        self.drone = olympe.Drone(SPHINX_IP)
+        self.drone = olympe.Drone(ANAFI_IP)
         self.roll = 0
         self.pich = 0
         self.yaw = 0
@@ -127,12 +127,21 @@ class TakeOff_Class:
         print(current.pose.position)
         '''
         if (current.pose.position.x != 0.06 and current.pose.position.y != -0.08 and current.pose.position.z != 0.39):
-            self.drone(PCMD(1,0,50,0,0,0))
+            self.drone(PCMD(1,0,10,0,0,0))
             #time.sleep(0.05)
         else:
             self.drone(PCMD(0,0,0,0,0,0))
         '''
+        if (current.pose.position.y != -0.08):
+            self.drone(PCMD(1,0,1,0,0,0))
+            #time.sleep(0.05)
+        else:
+            self.drone(PCMD(0, 0, 0, 0, 0, 0))
+            takeoff.disconnection()
 
+    def disconnection(self):
+        self.drone(Landing()).wait().success()
+        self.drone.disconnect()
 
     def connection(self):
         self.drone.connect()
@@ -148,7 +157,7 @@ if __name__ == "__main__":
     rospy.init_node('drone_takeoff_node', anonymous=False)
     rospy.loginfo("Takeoff Initiated!")
     takeoff = TakeOff_Class()
-    #takeoff.connection()
+    takeoff.connection()
     try :
         takeoff.listener()
         #time.sleep(0.05)
