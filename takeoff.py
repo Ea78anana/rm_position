@@ -35,6 +35,9 @@ import time
 ANAFI_IP = "192.168.42.1"
 SPHINX_IP = "10.202.0.1"
 check_flag = False
+arrive = False
+call = True
+data = 0
 
 class TakeOff_Class:
 
@@ -42,17 +45,18 @@ class TakeOff_Class:
         self.DRONE_IP = os.environ.get(SPHINX_IP)
         self.drone = olympe.Drone(SPHINX_IP)
         self.roll = 0
-        self.pich = 0
+        self.pitch = 0
         self.yaw = 0
         self.gaz = 0
         self.current_pos = np.array([[0.],[0.],[0.]])
+        self.count = 0
 
     def mpc_controll(self, pos):
-        global check_flag
-        if check_flag == False:
-            check_flag = True
+            global check_flag   
             m = 1
             T = 1
+            self.count += 1
+            print(self.count)
             
             A = np.array([
                 [1, 0, 0, T, 0, 0],
@@ -128,9 +132,9 @@ class TakeOff_Class:
 
             # Refrence value
             xref = np.array([
-                [0.0],
-                [1.0],
-                [1.09],
+                [2, 1.5, 1, 0.5, 0.0],
+                [2, 1.5, 1, 0.5, 0.0],
+                [1.09, 1.09, 1.09, 1.09, 1.09],
             ])
 
 
@@ -154,8 +158,8 @@ class TakeOff_Class:
 
             # Define constraints
             constraints = [z_min <= z, z <= z_max]
-            u_opt_a = [[0], [0], [0]]
-            count = 0
+            u_opt_a = []
+            u_opt = []
             flag = True
 
             while flag :
@@ -168,16 +172,8 @@ class TakeOff_Class:
                 x0 = A.dot(x0) + B.dot(u_opt)
                 #print(x0)
                 for i in range (3):
-                    u_opt_a[i] = int(u_opt[i] // 0.14)
-                print(u_opt)
-                start_time = time.time()
-                pass_time = 0
-                while pass_time < 2: 
-                    self.drone(PCMD(1, u_opt_a[0], u_opt_a[1], 0, u_opt_a[2], 0))
-                    cur_time = time.time()
-                    pass_time = cur_time - start_time
-                    count += 1
-                print(pass_time)
+                    u_opt[i] = int(u_opt[i] // 0.14)
+                u_opt_a.extend(u_opt)
                 
                 '''
                 if count < 5:
@@ -189,30 +185,61 @@ class TakeOff_Class:
                     break
                 ((x0[0] - xref[0] <= 1e-5) and (x0[1] - xref[1] <= 1e-5) and (x0[2] - xref[2] <= 1e-5))
                 '''
-                if (((x0[0] - xref[0]) <= 1e-5) and ((x0[1] - xref[1]) <= 1e-5) and ((x0[2] - xref[2]) <= 1e-5)):
+                if (np.linalg.norm(x0) <= 1e-2):
                     flag = False
-                    #self.drone(PCMD(0, 0, 0, 0, 0, 0))
-                    #check_flag = False
+                    self.roll = int(u_opt_a[0])
+                    self.pitch = int(u_opt_a[1])
+                    self.gaz = int(u_opt_a[2])
+                    print(self.roll)
+                    print(self.pitch)
+                    print(self.gaz)
                 else:
                     flag = True
                     #print(x0)'''
     
     def position_callback(self, msg):
         #print("position_callback")
-        self.MPC(msg)
+        global check_flag
+        if check_flag == False:
+            check_flag = True
+            self.MPC(msg)
+
+    def move(self):
+        pass_time = 0
+        start_time = time.time()
+        '''
+        self.roll = 10 * self.roll
+        self.pitch = 10 * self.pitch
+        self.gaz = 10 * self.gaz'''
+        while pass_time < 3:
+            self.drone(PCMD(1, self.roll, self.pitch, self.yaw, self.gaz, 0))
+            pass_time = time.time() - start_time
+        print(pass_time)
+        self.drone(PCMD(0, 0, 0, 0, 0, 0))
 
     def MPC(self, data):
         #print("MPC")
-        '''
-        current.pose.position.x = round(data.pose.position.x,2)
-        current.pose.position.y = round(data.pose.position.y,2)
-        current.pose.position.z = round(data.pose.position.z,2)'''
+        global arrive, call, check_flag
+
+        xref = np.array([[0.02],
+                        [0.0],
+                        [0.0]])
+
         self.current_pos[0] = round(data.pose.position.x,2)
         self.current_pos[1] = round(data.pose.position.y,2)
         self.current_pos[2] = round(data.pose.position.z,2)
-        #print(self.current_pos)
-
-        self.mpc_controll(self.current_pos)
+        print(self.current_pos)
+        call = False
+        if  ((abs(self.current_pos[0] - xref[0]) <= 1e-1) and (abs(self.current_pos[1] - xref[1]) <= 1e-1) and (abs(self.current_pos[2] - xref[2]) <= 1e-1)):
+            arrive = True
+            return
+        else:
+            #print("else")
+            self.mpc_controll(self.current_pos)
+            self.move()
+            #print("done")
+            call = True
+            check_flag = False
 
     def disconnection(self):
         self.drone(Landing()).wait().success()
@@ -223,7 +250,10 @@ class TakeOff_Class:
         self.drone(TakeOff()).wait().success()
 
     def listener(self):
-        sub = rospy.Subscriber('/natnet_ros/Drone1/pose', PoseStamped, self.position_callback)
+        global data
+        #sub = rospy.Subscriber('/natnet_ros/Drone1/pose', PoseStamped, self.position_callback)
+        data = rospy.wait_for_message('/natnet_ros/Drone1/pose', PoseStamped,)
+        #print(data)
         #rospy.spin()
 
 if __name__ == "__main__":
@@ -231,13 +261,18 @@ if __name__ == "__main__":
     rospy.loginfo("Takeoff Initiated!")
     takeoff = TakeOff_Class()
     takeoff.connection()
+    
     time.sleep(5)
-    #while True:
-    takeoff.listener()
-    time.sleep(30)
-    while check_flag != False:
-        takeoff.disconnection()
-        check_flag = False
+    while arrive != True:
+        if call == True:
+            takeoff.listener()
+            takeoff.position_callback(data)
+        time.sleep(2)
+    #takeoff.move()    
+    #time.sleep(5)
+    #while check_flag == False:
+    takeoff.disconnection()
+    print("Landed")
     #time.sleep(2.5)
         #time.sleep(0.05)
         #takeoff.test_takeoff()
