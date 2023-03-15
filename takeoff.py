@@ -43,7 +43,7 @@ class TakeOff_Class:
 
     def __init__(self):
         self.DRONE_IP = os.environ.get(SPHINX_IP)
-        self.drone = olympe.Drone(SPHINX_IP)
+        self.drone = olympe.Drone(ANAFI_IP)
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
@@ -55,8 +55,6 @@ class TakeOff_Class:
             global check_flag   
             m = 1
             T = 1
-            self.count += 1
-            print(self.count)
             
             A = np.array([
                 [1, 0, 0, T, 0, 0],
@@ -80,7 +78,16 @@ class TakeOff_Class:
             n = A.shape[0]  # number of states
             m = B.shape[1]  # number of inputs
             N = 10  # prediction horizon
-            Q = np.eye(n)  # weight matrix Q
+            if (self.count == 0 or self.count == 11):
+                Q = np.array([
+                [1, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 1]])
+            else :
+                Q = np.eye(n)  # weight matrix Q
             R = np.eye(m)  # weight matrix R
             P = np.array([
                 [1, 0, 0, 0, 0, 0],
@@ -132,11 +139,10 @@ class TakeOff_Class:
 
             # Refrence value
             xref = np.array([
-                [2, 1.5, 1, 0.5, 0.0],
-                [2, 1.5, 1, 0.5, 0.0],
-                [1.09, 1.09, 1.09, 1.09, 1.09],
+                [0.97, 0.47, -0.03, -0.07, -0.07, -0.09, 0.42, 0.81,  0.78, 1.07, 1.1, 1.1],
+                [-1.55, -1.38, -1.34, -0.9, -0.42, 0.16, 0.53, 0.882, 1.53, 1.83, 2.19, 2.19],
+                [1.09, 1.2, 1.4, 1.5, 1.6, 1.8, 2, 1.8, 1.6, 1.4, 1.2, 1.09],
             ])
-
 
             # Initial value
             x0 = np.array([
@@ -149,9 +155,7 @@ class TakeOff_Class:
             ])
 
             for i in range(3):
-                x0[i] = pos[i]
-            
-            z_0 = np.zeros((N * m, 1))
+                x0[i] = pos[i] - xref[i, self.count] 
 
             # Define optimization variables
             z = cp.Variable((N * m, 1))
@@ -161,6 +165,7 @@ class TakeOff_Class:
             u_opt_a = []
             u_opt = []
             flag = True
+            self.count += 1
 
             while flag :
                 obj = (1/2) * cp.quad_form(z, H)+ cp.matmul(cp.matmul(x0.T, F.T), z)
@@ -189,7 +194,7 @@ class TakeOff_Class:
                     flag = False
                     self.roll = int(u_opt_a[0])
                     self.pitch = int(u_opt_a[1])
-                    self.gaz = int(u_opt_a[2])
+                    self.gaz = - int(u_opt_a[2])
                     print(self.roll)
                     print(self.pitch)
                     print(self.gaz)
@@ -211,7 +216,7 @@ class TakeOff_Class:
         self.roll = 10 * self.roll
         self.pitch = 10 * self.pitch
         self.gaz = 10 * self.gaz'''
-        while pass_time < 3:
+        while pass_time < 2:
             self.drone(PCMD(1, self.roll, self.pitch, self.yaw, self.gaz, 0))
             pass_time = time.time() - start_time
         print(pass_time)
@@ -220,18 +225,20 @@ class TakeOff_Class:
     def MPC(self, data):
         #print("MPC")
         global arrive, call, check_flag
-
-        xref = np.array([[0.02],
-                        [0.0],
-                        [0.0]])
+        
+        xref = np.array([[0.1],
+                        [0.2],
+                        [1.09]])
 
         self.current_pos[0] = round(data.pose.position.x,2)
         self.current_pos[1] = round(data.pose.position.y,2)
         self.current_pos[2] = round(data.pose.position.z,2)
         print(self.current_pos)
         call = False
-        if  ((abs(self.current_pos[0] - xref[0]) <= 1e-1) and (abs(self.current_pos[1] - xref[1]) <= 1e-1) and (abs(self.current_pos[2] - xref[2]) <= 1e-1)):
+        #(abs(self.current_pos[2] - xref[2]) <= 1e-1)
+        if  (abs(self.current_pos[0]) - xref[0] <= 1e-1) and (abs(self.current_pos[1]) - xref[1] <= 1e-1):
             arrive = True
+            print("arrive")
             return
         else:
             #print("else")
@@ -263,16 +270,23 @@ if __name__ == "__main__":
     takeoff.connection()
     
     time.sleep(5)
+    '''
     while arrive != True:
         if call == True:
             takeoff.listener()
             takeoff.position_callback(data)
         time.sleep(2)
+    '''   
+    for i in range(12):
+        if call == True:
+            takeoff.listener()
+            takeoff.position_callback(data)
+        time.sleep(2)
+    
     #takeoff.move()    
     #time.sleep(5)
     #while check_flag == False:
     takeoff.disconnection()
     print("Landed")
     #time.sleep(2.5)
-        #time.sleep(0.05)
-        #takeoff.test_takeoff()
+    #takeoff.test_takeoff()
