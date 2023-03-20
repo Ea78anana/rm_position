@@ -52,13 +52,13 @@ class TakeOff_Class:
         self.gaz = 0
         self.current_pos = np.array([[0.],[0.],[0.]])
         self.count = 0
-        self.path_x = {}
-        self.path_y = {}
+        self.path_x = []
+        self.path_y = []
 
     def mpc_controll(self, pos):
             global check_flag   
             m = 1
-            T = 0.5
+            T = 0.6
             
             A = np.array([
                 [1, 0, 0, T, 0, 0],
@@ -217,7 +217,7 @@ class TakeOff_Class:
     def move(self):
         pass_time = 0
         start_time = time.time()
-        while pass_time < 0.5:
+        while pass_time < 0.6:
             self.drone(PCMD(1, self.roll, self.pitch, self.yaw, self.gaz, 0))
             pass_time = time.time() - start_time
         print(pass_time)
@@ -234,9 +234,9 @@ class TakeOff_Class:
         self.current_pos[0] = round(data.pose.position.x,2)
         self.current_pos[1] = round(data.pose.position.y,2)
         self.current_pos[2] = round(data.pose.position.z,2)
-        '''
+
         self.path_x.extend(self.current_pos[0])
-        self.path_y.extend(self.current_pos[1])'''
+        self.path_y.extend(self.current_pos[1])
         print(self.current_pos)
         call = False
         #(abs(self.current_pos[2] - xref[2]) <= 1e-1)
@@ -259,6 +259,7 @@ class TakeOff_Class:
 
     def disconnection(self):
         self.drone(Landing()).wait().success()
+        np.savetxt('/home/ehsan/Desktop/drone.txt', np.array(self.path_x + self.path_y))
         self.drone.disconnect()
 
     def connection(self):
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         if call == True:
             takeoff.listener()
             takeoff.position_callback(data)
-        time.sleep(0.5)
+        time.sleep(0.6)
     
     takeoff.disconnection()
     print("Landed")
