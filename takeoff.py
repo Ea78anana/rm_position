@@ -12,6 +12,7 @@ import scipy
 import olympe
 import olympe.media
 import olympe_deps as od
+import matplotlib.pyplot as plt 
 from olympe.messages.skyctrl.CoPiloting import setPilotingSource
 from olympe.enums.ardrone3.Piloting import MoveTo_Orientation_mode
 from olympe.enums.ardrone3.GPSSettings import HomeType_Type
@@ -29,6 +30,7 @@ import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 import time
+import math
 
 #current = PoseStamped()
 
@@ -45,21 +47,34 @@ class TakeOff_Class:
 
     def __init__(self):
         self.DRONE_IP = os.environ.get(SPHINX_IP)
-        self.drone = olympe.Drone(ANAFI2_IP)
+        self.drone = olympe.Drone(ANAFI_IP)
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
         self.gaz = 0
-        self.current_pos = np.array([[0.],[0.],[0.]])
+        self.current_pos = np.array([[0.],[0.],[0.],[0.]])
         self.count = 0
         self.path_x = []
         self.path_y = []
+        self.xref = np.array([
+                [0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14, 0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78],
+                [0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78, 0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            ])
+        self.ref_path_x = self.xref[0]
+        self.ref_path_y = self.xref[1]
 
     def mpc_controll(self, pos):
             global check_flag   
-            m = 1
+            m = 0.7
             T = 0.6
-            
+            pos = np.array(pos)
+            D = np.array([
+                [math.cos(pos[3] * 180 * math.pi / 180), math.sin(pos[3] * 180 * math.pi / 180), 0],
+                [-math.sin(pos[3] * 180 * math.pi / 180), math.cos(pos[3] * 180 * math.pi / 180), 0],
+                [0, 0, 1]]
+            )
+
             A = np.array([
                 [1, 0, 0, T, 0, 0],
                 [0, 1, 0, 0, T, 0],
@@ -82,25 +97,25 @@ class TakeOff_Class:
             m = B.shape[1]  # number of inputs
             N = 10  # prediction horizon
             if (self.count == 0 or self.count == 36):
-                Q = np.array([ # weight matrix Q
-                [1, 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0],
+                Q = 1000 * np.array([ # weight matrix Q
+                [3, 0, 0, 0, 0, 0],
+                [0, 3, 0, 0, 0, 0],
                 [0, 0, 1, 0, 0, 0],
                 [0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 1, 0],
                 [0, 0, 0, 0, 0, 1]])  
             else :
                 Q = 1000 * np.array([
-                [1, 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0],
+                [3, 0, 0, 0, 0, 0],
+                [0, 3, 0, 0, 0, 0],
                 [0, 0, 1, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0]])
             R = np.eye(m)  # weight matrix R
-            P = 100 * np.array([
-                [1, 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0],
+            P = 1000 * np.array([
+                [3, 0, 0, 0, 0, 0],
+                [0, 3, 0, 0, 0, 0],
                 [0, 0, 1, 0, 0, 0],
                 [0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 1, 0],
@@ -148,17 +163,12 @@ class TakeOff_Class:
 
             #Refrence Value
             '''
-            xref = np.array([
+            self.xref = np.array([
                 [0.8, 0.8, 0.8, 0.8, 0.8,  0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
                 [0.3, 0.6, 0.85, 1.1, 1.25, 1.4, 1.625, 1.85, 1.9, 1.95, 1.95, 1.95, 1.95, 1.95, 1.95],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
             ])
             '''
-            xref = np.array([
-                [0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14, 0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78],
-                [0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78, 0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            ])
 
             # Initial value
             x0 = np.array([
@@ -171,7 +181,7 @@ class TakeOff_Class:
             ])
 
             for i in range(3):
-                x0[i] = pos[i] - xref[i, self.count] 
+                x0[i] = pos[i] - self.xref[i][self.count] 
 
             # Define optimization variables
             z = cp.Variable((N * m, 1))
@@ -180,6 +190,10 @@ class TakeOff_Class:
             constraints = [z_min <= z, z <= z_max]
             u_opt_a = []
             u_opt = []
+            v = np.array([
+                [0.],
+                [0.],
+                [0.]])
             flag = True
 
             while flag :
@@ -190,19 +204,22 @@ class TakeOff_Class:
                 prob.solve(warm_start=True)
                 u_opt = z[0:m].value
                 x0 = A.dot(x0) + B.dot(u_opt)
-                #print(x0)
+                for i in range(3):
+                    v[i] = x0[i + 3]
+                #v0 = np.matmul(D, v)
+
                 for i in range (3):
-                    u_opt[i] = int(u_opt[i] // 0.14)
+                    u_opt[i] = int(round(v[i][0] / 0.14))
                 u_opt_a.extend(u_opt)
                 
                 if (np.linalg.norm(x0) <= 1e-2):
                     flag = False
                     self.roll = int(u_opt_a[0])
                     self.pitch = int(u_opt_a[1])
-                    self.gaz = - int(u_opt_a[2])
-                    print(self.roll)
-                    print(self.pitch)
-                    print(self.gaz)
+                    self.gaz = int(u_opt_a[2])
+                    #print(self.roll)
+                    #print(self.pitch)
+                    #print(self.gaz)
                 else:
                     flag = True
                     #print(x0)'''
@@ -217,7 +234,7 @@ class TakeOff_Class:
     def move(self):
         pass_time = 0
         start_time = time.time()
-        while pass_time < 0.6:
+        while pass_time < 0.4:
             self.drone(PCMD(1, self.roll, self.pitch, self.yaw, self.gaz, 0))
             pass_time = time.time() - start_time
         print(pass_time)
@@ -226,40 +243,55 @@ class TakeOff_Class:
     def MPC(self, data):
         #print("MPC")
         global arrive, call, check_flag
-        
-        xref = np.array([[0.8],
-                        [1.95],
-                        [1]])
 
         self.current_pos[0] = round(data.pose.position.x,2)
         self.current_pos[1] = round(data.pose.position.y,2)
         self.current_pos[2] = round(data.pose.position.z,2)
+        self.current_pos[3] = round(data.pose.orientation.w,2)
 
         self.path_x.extend(self.current_pos[0])
         self.path_y.extend(self.current_pos[1])
         print(self.current_pos)
         call = False
-        #(abs(self.current_pos[2] - xref[2]) <= 1e-1)
-        '''
-        if  (abs(self.current_pos[0]) - xref[0] <= 1e-2) and (abs(self.current_pos[1]) - xref[1] <= 1e-2) and self.count == 35:
+        #(abs(self.current_pos[2] - self.xref[2]) <= 1e-1)
+        
+        if ((abs(abs(self.current_pos[0]) - abs(self.xref[0][self.count])) <= 1e-1) and (abs(abs(self.current_pos[1]) - abs(self.xref[1][self.count])) <= 1e-1) and self.count == 35):
             arrive = True
             print("arrive")
             return
-        else:'''
-        #print("else")
-        self.mpc_controll(self.current_pos)
-        self.move()
-        if self.count < 35:
-            self.count += 1
         else:
-            pass
+        #print("else")
+            self.mpc_controll(self.current_pos)
+            self.move()
+            print(self.count)
+            if (abs(abs(self.current_pos[0]) - abs(self.xref[0][self.count])) <= 1e-1) and (abs(abs(self.current_pos[1]) - abs(self.xref[1][self.count])) <= 1e-1):
+                self.count += 1
+            else:
+                print(abs(abs(self.current_pos[0]) - self.xref[0][self.count]))
+                print(abs(abs(self.current_pos[1]) - self.xref[1][self.count]))
+                pass
         #print("done")
         call = True
         check_flag = False
 
+    def plot_graph(self):
+        fig, ax = plt.subplots()
+
+        #ax.set_ylim([-1, 1])
+
+        ax.plot(self.ref_path_x, self.ref_path_y, 'bo-', label = 'Path1')
+        ax.plot(self.path_x, self.path_y, 'g^-', label = 'Path2')
+
+        ax.set_xlabel('X position')
+        ax.set_ylabel('Y position')
+
+        ax.legend()
+
+        plt.show()
+
     def disconnection(self):
         self.drone(Landing()).wait().success()
-        np.savetxt('/home/ehsan/Desktop/drone.txt', np.array(self.path_x + self.path_y))
+        #np.savetxt('/home/ehsan/Desktop/drone.txt', np.array(self.path_x + self.path_y))
         self.drone.disconnect()
 
     def connection(self):
@@ -268,8 +300,8 @@ class TakeOff_Class:
 
     def listener(self):
         global data
-        #data = rospy.wait_for_message('/natnet_ros/Drone1/pose', PoseStamped,)
-        data = rospy.wait_for_message('/natnet_ros/Drone2/pose', PoseStamped,)
+        data = rospy.wait_for_message('/natnet_ros/Drone1/pose', PoseStamped,)
+        #data = rospy.wait_for_message('/natnet_ros/Drone2/pose', PoseStamped,)
 
 
 if __name__ == "__main__":
@@ -279,7 +311,7 @@ if __name__ == "__main__":
     takeoff.connection()
     
     time.sleep(5)
-    '''
+    
     while arrive != True:
         if call == True:
             takeoff.listener()
@@ -290,27 +322,28 @@ if __name__ == "__main__":
         if call == True:
             takeoff.listener()
             takeoff.position_callback(data)
-        time.sleep(0.6)
-    
+        time.sleep(1)
+    '''
     takeoff.disconnection()
+    takeoff.plot_graph()
     print("Landed")
 
 
 
 '''
-xref = np.array([
+self.xref = np.array([
                 [0.97, 0.47, -0.03, -0.07, -0.07, -0.09, 0.42, 0.81,  0.78, 1.07, 1.1, 1.1],
                 [-1.55, -1.38, -1.34, -0.9, -0.42, 0.16, 0.53, 0.882, 1.53, 1.83, 2.19, 2.19],
                 [1.09, 1.2, 1.4, 1.5, 1.6, 1.8, 2, 1.8, 1.6, 1.4, 1.2, 1.09],
             ])
 
-xref = np.array([
+self.xref = np.array([
                 [0.97, 0.47, 0.13, -0.03, -0.07, -0.07, -0.07, 0.42, 0.53, 0.78, 0.81, 1.07, 1.1, 1, 0.8, 0.5, 0.2, 0, 0, 0],
                 [-1.55, -1.38, -1.38, -1.34, -0.9, -0.42, 0.16, 0.53, 0.68, 0.882, 1.2, 1.5, 1.8, 2, 1.8, 1.6, 1.4, 1.2, 1, 0],
                 [1.09, 1.2, 1.4, 1.4, 1.5, 1.6, 1.8, 2, 1.8, 1.6, 1.4, 1.4, 1.2, 1.09, 1.09, 1.09, 1.09, 1.09, 1.09, 1.09],
             ])
 
-xref = np.array([
+self.xref = np.array([
                 [0.8, 0.8, 0.8, 0.8, 0.8,  0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
                 [0.3, 0.6, 0.85, 1.1, 1.25, 1.4, 1.625, 1.85, 1.9, 1.95, 1.95, 1.95, 1.95, 1.95, 1.95],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
