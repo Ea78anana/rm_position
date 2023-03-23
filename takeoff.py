@@ -56,11 +56,20 @@ class TakeOff_Class:
         self.count = 0
         self.path_x = []
         self.path_y = []
+        self.path_error_x = []
+        self.path_error_y =[]
+        
         self.xref = np.array([
                 [0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14, 0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78],
                 [0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78, 0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
             ])
+        '''    
+        self.xref = np.array([
+            [0.8, 0.8, 0.8, 0.8, 0.8,  0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+            [0.3, 0.6, 0.85, 1.1, 1.25, 1.4, 1.625, 1.85, 1.9, 1.95, 1.95, 1.95, 1.95, 1.95, 1.95],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ])'''
         self.ref_path_x = self.xref[0]
         self.ref_path_y = self.xref[1]
 
@@ -240,14 +249,14 @@ class TakeOff_Class:
         print(pass_time)
         #self.drone(PCMD(0, 0, 0, 0, 0, 0))
 
-    def MPC(self, data):
+    def MPC(self, update):
         #print("MPC")
-        global arrive, call, check_flag
+        global arrive, call, check_flag, data
 
-        self.current_pos[0] = round(data.pose.position.x,2)
-        self.current_pos[1] = round(data.pose.position.y,2)
-        self.current_pos[2] = round(data.pose.position.z,2)
-        self.current_pos[3] = round(data.pose.orientation.w,2)
+        self.current_pos[0] = round(update.pose.position.x,2)
+        self.current_pos[1] = round(update.pose.position.y,2)
+        self.current_pos[2] = round(update.pose.position.z,2)
+        self.current_pos[3] = round(update.pose.orientation.w,2)
 
         self.path_x.extend(self.current_pos[0])
         self.path_y.extend(self.current_pos[1])
@@ -255,7 +264,7 @@ class TakeOff_Class:
         call = False
         #(abs(self.current_pos[2] - self.xref[2]) <= 1e-1)
         
-        if ((abs(abs(self.current_pos[0]) - abs(self.xref[0][self.count])) <= 1e-1) and (abs(abs(self.current_pos[1]) - abs(self.xref[1][self.count])) <= 1e-1) and self.count == 35):
+        if ((abs(self.current_pos[0]) - abs(self.xref[0][self.count]) <= 1e-1) and (abs(self.current_pos[1]) - abs(self.xref[1][self.count]) <= 1e-1) and self.count == 35):
             arrive = True
             print("arrive")
             return
@@ -264,11 +273,18 @@ class TakeOff_Class:
             self.mpc_controll(self.current_pos)
             self.move()
             print(self.count)
-            if (abs(abs(self.current_pos[0]) - abs(self.xref[0][self.count])) <= 1e-1) and (abs(abs(self.current_pos[1]) - abs(self.xref[1][self.count])) <= 1e-1):
+            self.listener()
+            self.current_pos[0] = round(data.pose.position.x,2)
+            self.current_pos[1] = round(data.pose.position.y,2)
+            self.current_pos[2] = round(data.pose.position.z,2)
+            self.current_pos[3] = round(data.pose.orientation.w,2)
+            if (abs(self.current_pos[0]) - abs(self.xref[0][self.count]) <= 1e-1) and (abs(self.current_pos[1]) - abs(self.xref[1][self.count]) <= 1e-1):
+                self.path_error_x = self.current_pos[0]
+                self.path_error_y = self.current_pos[1]
                 self.count += 1
             else:
-                print(abs(abs(self.current_pos[0]) - self.xref[0][self.count]))
-                print(abs(abs(self.current_pos[1]) - self.xref[1][self.count]))
+                print(abs(self.current_pos[0]) - abs(self.xref[0][self.count]))
+                print(abs(self.current_pos[1]) - abs(self.xref[1][self.count]))
                 pass
         #print("done")
         call = True
@@ -276,8 +292,6 @@ class TakeOff_Class:
 
     def plot_graph(self):
         fig, ax = plt.subplots()
-
-        #ax.set_ylim([-1, 1])
 
         ax.plot(self.ref_path_x, self.ref_path_y, 'bo-', label = 'Path1')
         ax.plot(self.path_x, self.path_y, 'g^-', label = 'Path2')
