@@ -60,18 +60,20 @@ class TakeOff_Class:
         self.path_error_y =[]
         self.vx = []
         self.vy = []
-        
-        # self.xref = np.array([
-        #         [0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14, 0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78],
-        #         [0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78, 0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14],
-        #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        #     ])
+        self.error = []
         
         self.xref = np.array([
-            [0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0.3, 0.6, 0.85, 1.1, 1.25, 1.4, 1.625, 1.85, 1.9, 1.95, 1.95, 1.95, 1.95, 1.95, 1.95],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        ])
+                [0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14, 0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78],
+                [0, 0.14, 0.27, 0.4, 0.51, 0.61, 0.69, 0.75, 0.78, 0.8, 0.78, 0.75, 0.69, 0.61, 0.51, 0.4, 0.27, 0.14, 0, -0.14, -0.27, -0.4, -0.51, -0.61, -0.69, -0.75, -0.78, -0.8, -0.78, -0.75, -0.69, -0.61, -0.51, -0.4, -0.27, -0.14],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            ])
+        
+        # self.xref = np.array([
+        #     [0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #     [0.3, 0.6, 0.85, 1.1, 1.25, 1.4, 1.625, 1.85, 1.9, 1.95, 1.95, 1.95, 1.95, 1.95, 1.95],
+        #     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        # ])
+        
         self.ref_path_x = self.xref[0]
         self.ref_path_y = self.xref[1]
 
@@ -107,7 +109,7 @@ class TakeOff_Class:
             n = A.shape[0]  # number of states
             m = B.shape[1]  # number of inputs
             N = 10  # prediction horizon
-            if (self.count == 0 or self.count == 15):
+            if (self.count == 0 or self.count == 36):
                 Q = 1000 * np.array([ # weight matrix Q
                 [3, 0, 0, 0, 0, 0],
                 [0, 3, 0, 0, 0, 0],
@@ -268,7 +270,7 @@ class TakeOff_Class:
         call = False
         #(abs(self.current_pos[2] - self.xref[2]) <= 1e-1)
         
-        if ((abs(self.current_pos[0]) - abs(self.xref[0][self.count]) <= 1e-1) and (abs(self.current_pos[1]) - abs(self.xref[1][self.count]) <= 1e-1) and self.count == 14):
+        if ((abs(self.current_pos[0]) - abs(self.xref[0][self.count]) <= 1e-1) and (abs(self.current_pos[1]) - abs(self.xref[1][self.count]) <= 1e-1) and self.count == 35):
             arrive = True
             print("arrive")
             self.listener()
@@ -276,8 +278,9 @@ class TakeOff_Class:
             self.current_pos[1] = round(data.pose.position.y,2)
             self.current_pos[2] = round(data.pose.position.z,2)
             self.current_pos[3] = round(data.pose.orientation.w,2)
-            self.path_error_x.extend(self.current_pos[0])
-            self.path_error_y.extend(self.current_pos[1])
+            # self.path_error_x.extend(self.current_pos[0])
+            # self.path_error_y.extend(self.current_pos[1])
+            self.error.extend([round(math.sqrt((abs(self.current_pos[0]) - abs(self.xref[0][self.count]))**2 + (abs(self.current_pos[1]) - abs(self.xref[1][self.count]))**2), 2)]) 
             return
         else:
         #print("else")
@@ -289,10 +292,12 @@ class TakeOff_Class:
             self.current_pos[1] = round(data.pose.position.y,2)
             self.current_pos[2] = round(data.pose.position.z,2)
             self.current_pos[3] = round(data.pose.orientation.w,2)
+            self.error.extend([round(math.sqrt((abs(self.current_pos[0]) - abs(self.xref[0][self.count]))**2 + (abs(self.current_pos[1]) - abs(self.xref[1][self.count]))**2), 2)]) 
             if (abs(self.current_pos[0]) - abs(self.xref[0][self.count]) <= 1e-1) and (abs(self.current_pos[1]) - abs(self.xref[1][self.count]) <= 1e-1):
-                self.path_error_x.extend(self.current_pos[0])
-                self.path_error_y.extend(self.current_pos[1])
-                if self.count < 14:
+                # self.path_error_x.extend(self.current_pos[0])
+                # self.path_error_y.extend(self.current_pos[1])
+                # self.error.extend([round(math.sqrt((abs(self.current_pos[0]) - abs(self.xref[0][self.count]))**2 + (abs(self.current_pos[1]) - abs(self.xref[1][self.count]))**2), 2)]) 
+                if self.count < 35:
                     self.count += 1
                 else:
                     pass
@@ -310,14 +315,16 @@ class TakeOff_Class:
         ax[0,0].plot(self.ref_path_x, self.ref_path_y, 'bo-', label = 'Path1')
         ax[0,0].plot(self.path_x, self.path_y, 'g^-', label = 'Path2')
 
+        ax[0,0].set_xlim([-2, 2])
+        ax[0,0].set_ylim([-2, 2])
         ax[0,0].set_xlabel('X position')
         ax[0,0].set_ylabel('Y position')
 
         ax[0,0].legend()
 
-        error = [math.sqrt((self.ref_path_x[i] - self.path_error_x[i])**2 + (self.ref_path_y[i] - self.path_error_y[i])**2 ) for i in range(15)]
+        #error = [math.sqrt((self.ref_path_x[i] - self.path_error_x[i])**2 + (self.ref_path_y[i] - self.path_error_y[i])**2 ) for i in range(15)]
 
-        ax[0,1].plot(error)
+        ax[0,1].plot(self.error)
         ax[0,1].set_xlabel('Iteration')
         ax[0,1].set_ylabel('Error')
         ax[0,1].legend()
@@ -361,7 +368,7 @@ if __name__ == "__main__":
         if call == True:
             takeoff.listener()
             takeoff.position_callback(data)
-        time.sleep(1)
+        time.sleep(0.8)
     '''   
     for i in range(36):
         if call == True:
