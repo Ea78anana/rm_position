@@ -158,3 +158,4 @@ axs[1].set_xlabel('Iteration')
 axs[1].legend()
 
 plt.show()
+
